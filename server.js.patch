@@ -1,0 +1,52 @@
+--- server.js
++++ server.js
+@@ -190,46 +190,46 @@
+     res.json(responseData);
+   } catch (err) {
+     console.error('Error fetching all milestones:', err.message);
+     res.status(500).json({ error: err.message });
+   }
+ });
+ 
+-// Fallback: serve index.html for SPA
+-app.get('*', (req, res) => {
+-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+-});
+-
+ // GET /api/tasks?project_id=xxx&milestone_id=xxx — List tasks for a milestone
+ app.get('/api/tasks', async (req, res) => {
+   try {
+     const { project_id, milestone_id } = req.query;
+     if (!project_id) {
+       return res.status(400).json({ error: 'project_id is required' });
+     }
+     
+     // The Freedcamp API allows filtering tasks by milestone_id
+     const params = { project_id };
+     if (milestone_id) {
+       params.milestone_id = milestone_id;
+     }
+     
+     const data = await freedcampFetch('tasks', params);
+     
+     // Handle the task data format properly
+     let tasks = data.data?.tasks || data.tasks || [];
+     if (!Array.isArray(tasks) && typeof tasks === 'object') {
+       tasks = Object.values(tasks);
+     }
+     
+     res.json({ tasks });
+   } catch (err) {
+     console.error('Error fetching tasks:', err.message);
+     res.status(500).json({ error: err.message });
+   }
+ });
++
++// Fallback: serve index.html for SPA
++app.get('*', (req, res) => {
++  res.sendFile(path.join(__dirname, 'public', 'index.html'));
++});
+ 
+ app.listen(PORT, () => {
+   console.log(`🚀 CEO Dashboard running at http://localhost:${PORT}`);
+ });
