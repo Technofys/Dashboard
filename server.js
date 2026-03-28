@@ -12,6 +12,17 @@ const BASE_URL = 'https://freedcamp.com/api/v1';
 
 app.use(cors());
 app.use(express.json());
+
+// Vercel Routing Fix: Restore original API path from query parameter
+app.use((req, res, next) => {
+  if (req.query && req.query.apiPath) {
+    req.url = '/api/' + req.query.apiPath;
+    // Remove it from query so it doesn't pollute handler logic
+    delete req.query.apiPath;
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Generate Freedcamp auth params (HMAC-SHA1)

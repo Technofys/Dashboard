@@ -8,8 +8,8 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/server.js"
+      "source": "/api/(.*)",
+      "destination": "/server.js?apiPath=$1"
     }
   ],
   "env": {
