@@ -4,15 +4,16 @@
     {
       "src": "server.js",
       "use": "@vercel/node"
-    }
-  ],
-  "rewrites": [
+    },
     {
-      "source": "/api/(.*)",
-      "destination": "/server.js?apiPath=$1"
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "server.js" },
+    { "src": "/(.*\\.(js|css|html|png|jpg|svg|ico))", "dest": "public/$1" },
+    { "src": "/", "dest": "public/index.html" },
+    { "src": "/milestone.html", "dest": "public/milestone.html" }
+  ]
 }

@@ -13,16 +13,6 @@ const BASE_URL = 'https://freedcamp.com/api/v1';
 app.use(cors());
 app.use(express.json());
 
-// Vercel Routing Fix: Restore original API path from query parameter
-app.use((req, res, next) => {
-  if (req.query && req.query.apiPath) {
-    req.url = '/api/' + req.query.apiPath;
-    // Remove it from query so it doesn't pollute handler logic
-    delete req.query.apiPath;
-  }
-  next();
-});
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Generate Freedcamp auth params (HMAC-SHA1)
@@ -314,8 +304,9 @@ app.get('/api/milestone-detail', async (req, res) => {
   }
 });
 
-// Fallback: serve index.html for SPA
+// Fallback: serve index.html for SPA (skip API routes)
 app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
