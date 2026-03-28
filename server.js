@@ -310,6 +310,12 @@ app.get('*', (req, res) => {
 
 // Fallback route has been moved below /api/tasks
 
-app.listen(PORT, () => {
-  console.log(`🚀 CEO Dashboard running at http://localhost:${PORT}`);
-});
+// Export the app for Vercel serverless deployment
+module.exports = app;
+
+// Only start the server locally if not in a serverless environment
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 CEO Dashboard running at http://localhost:${PORT}`);
+  });
+}
