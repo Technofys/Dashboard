@@ -1,21 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    { "src": "/api/dashboard", "dest": "/server.js" },
-    { "src": "/api/tasks", "dest": "/server.js" },
-    { "src": "/api/milestone-detail", "dest": "/server.js" },
-    { "src": "/(.*\\.(js|css|html|png|jpg|svg|ico))", "dest": "/public/$1" },
-    { "src": "/milestone.html", "dest": "/public/milestone.html" },
-    { "src": "/", "dest": "/public/index.html" }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" }
   ]
 }
