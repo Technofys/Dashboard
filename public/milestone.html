@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Milestone Detail — CEO Dashboard</title>
+  <meta name="description" content="Detailed view of a Freedcamp milestone with progress tracking, team breakdown, and task analysis.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="milestone.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <header class="detail-header">
+      <a href="/" class="back-btn" id="backBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to Dashboard
+      </a>
+      <div class="detail-title-section">
+        <div class="detail-title-row">
+          <h1 class="detail-title" id="milestoneTitle">Loading...</h1>
+          <span class="detail-badge" id="milestoneBadge"></span>
+        </div>
+        <div class="detail-subtitle" id="milestoneSubtitle"></div>
+      </div>
+    </header>
+
+    <!-- Loading State -->
+    <div class="loading-state" id="loadingState">
+      <div class="loading-spinner">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      </div>
+      <p>Loading milestone data...</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-state hidden" id="errorState">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <h3>Failed to load milestone</h3>
+      <p id="errorMessage">Something went wrong</p>
+      <button class="btn-retry" onclick="window.location.reload()">Try Again</button>
+    </div>
+
+    <!-- Main Content -->
+    <main class="detail-content hidden" id="mainContent">
+
+      <!-- Metric Cards -->
+      <section class="metrics-grid" id="metricsGrid"></section>
+
+      <!-- Charts + Insights Row -->
+      <section class="charts-row">
+        <div class="chart-card" id="chartCard">
+          <h2 class="section-title">Progress Overview</h2>
+          <div class="chart-inner" id="chartInner"></div>
+        </div>
+        <div class="insights-card" id="insightsCard">
+          <h2 class="section-title">Key Insights</h2>
+          <div class="insights-list" id="insightsList"></div>
+        </div>
+      </section>
+
+      <!-- Team Breakdown -->
+      <section class="team-section">
+        <h2 class="section-title">Team Breakdown</h2>
+        <div class="team-grid" id="teamGrid"></div>
+      </section>
+
+      <!-- Milestone Description -->
+      <section class="description-section hidden" id="descriptionSection">
+        <h2 class="section-title">Description</h2>
+        <div class="description-content" id="descriptionContent"></div>
+      </section>
+
+      <!-- Task Table -->
+      <section class="tasks-section">
+        <h2 class="section-title" id="tasksTitle">All Tasks</h2>
+        <div class="tasks-table-wrapper" id="tasksTable"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="milestone.js"></script>
+</body>
+</html>

@@ -234,7 +234,6 @@ app.get('/api/tasks', async (req, res) => {
       return res.status(400).json({ error: 'project_id is required' });
     }
     
-    // The Freedcamp API allows filtering tasks by milestone_id
     const params = { project_id };
     if (milestone_id) {
       params.milestone_id = milestone_id;
@@ -248,9 +247,58 @@ app.get('/api/tasks', async (req, res) => {
       tasks = Object.values(tasks);
     }
     
+    // Filter tasks to only include those belonging to the requested milestone
+    // Freedcamp API may not reliably filter by milestone_id, so we filter by ms_id
+    if (milestone_id) {
+      const msId = String(milestone_id);
+      tasks = tasks.filter(t => String(t.ms_id || '') === msId);
+    }
+    
     res.json({ tasks });
   } catch (err) {
     console.error('Error fetching tasks:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/milestone-detail?project_id=xxx&milestone_id=xxx — Full milestone detail with tasks
+app.get('/api/milestone-detail', async (req, res) => {
+  try {
+    const { project_id, milestone_id } = req.query;
+    if (!project_id || !milestone_id) {
+      return res.status(400).json({ error: 'project_id and milestone_id are required' });
+    }
+
+    // Get milestone data from the milestones endpoint
+    const msData = await freedcampFetch('milestones', { project_id });
+    let milestones = msData.data?.milestones || msData.milestones || [];
+    if (!Array.isArray(milestones) && typeof milestones === 'object') {
+      milestones = Object.values(milestones);
+    }
+    const milestone = milestones.find(m => String(m.id) === String(milestone_id));
+
+    // Get project info
+    const projectsData = await freedcampFetch('projects');
+    const projects = projectsData.data?.projects || projectsData.projects || [];
+    let projectList = Array.isArray(projects) ? projects : Object.values(projects);
+    const project = projectList.find(p => String(p.project_id || p.id) === String(project_id));
+
+    // Get tasks for this milestone
+    const taskData = await freedcampFetch('tasks', { project_id });
+    let tasks = taskData.data?.tasks || taskData.tasks || [];
+    if (!Array.isArray(tasks) && typeof tasks === 'object') {
+      tasks = Object.values(tasks);
+    }
+    // Filter to only tasks in this milestone
+    tasks = tasks.filter(t => String(t.ms_id || '') === String(milestone_id));
+
+    res.json({
+      milestone: milestone || null,
+      project: project ? { id: project.project_id || project.id, name: project.project_name || project.name } : null,
+      tasks,
+    });
+  } catch (err) {
+    console.error('Error fetching milestone detail:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

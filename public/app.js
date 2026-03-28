@@ -175,83 +175,12 @@ function renderMilestones() {
   emptyState.classList.add('hidden');
   milestonesGrid.innerHTML = filtered.map((ms, i) => createMilestoneCard(ms, i)).join('');
   
-  // Attach click listeners for expanding tasks
+  // Attach click listeners to navigate to milestone detail page
   document.querySelectorAll('.milestone-card').forEach(card => {
-    card.addEventListener('click', async (e) => {
-      // Don't trigger if clicking inside the tasks container
-      if (e.target.closest('.tasks-container')) return;
-      
-      const isExpanded = card.classList.contains('expanded');
-      
-      // Close other expanded cards
-      document.querySelectorAll('.milestone-card.expanded').forEach(c => {
-        if (c !== card) c.classList.remove('expanded');
-      });
-      
-      if (isExpanded) {
-        card.classList.remove('expanded');
-        return;
-      }
-      
-      card.classList.add('expanded');
-      
+    card.addEventListener('click', (e) => {
       const projectId = card.dataset.projectId;
       const milestoneId = card.dataset.milestoneId;
-      const tasksContainer = card.querySelector('.tasks-container');
-      
-      // If already loaded, just expand
-      if (tasksContainer.dataset.loaded === 'true') return;
-      
-      // Fetch tasks
-      try {
-        tasksContainer.innerHTML = `
-          <div class="tasks-loading">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            <div>Loading tasks...</div>
-          </div>
-        `;
-        
-        const res = await fetch(`${API_BASE}/tasks?project_id=${projectId}&milestone_id=${milestoneId}`);
-        if (!res.ok) throw new Error('Failed to fetch');
-        
-        const data = await res.json();
-        const tasks = data.tasks || [];
-        
-        tasksContainer.dataset.loaded = 'true';
-        
-        if (tasks.length === 0) {
-          tasksContainer.innerHTML = `<div class="tasks-empty">No tasks in this milestone.</div>`;
-          return;
-        }
-        
-        tasksContainer.innerHTML = tasks.map(task => {
-          const isCompleted = task.status === 2 || task.status === '2' || task.status === 'completed';
-          const iconClass = isCompleted ? 'completed' : 'pending';
-          const iconSvg = isCompleted 
-            ? `<polyline points="20 6 9 17 4 12"></polyline>` 
-            : `<circle cx="12" cy="12" r="10"></circle>`;
-            
-          const assignee = task.assigned_to_fullname || 'Unassigned';
-          
-          return `
-            <div class="task-item">
-              <div class="task-status-icon ${iconClass}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>
-              </div>
-              <div class="task-details">
-                <div class="task-title">${escapeHtml(task.title || 'Untitled Task')}</div>
-                <div class="task-meta">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  ${escapeHtml(assignee)}
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('');
-        
-      } catch (err) {
-        tasksContainer.innerHTML = `<div class="tasks-empty" style="color: var(--accent-rose)">Error loading tasks</div>`;
-      }
+      window.location.href = `/milestone.html?project_id=${projectId}&milestone_id=${milestoneId}`;
     });
   });
 }
@@ -323,6 +252,210 @@ function createMilestoneCard(ms, index) {
       </div>
       
       <div class="tasks-container" data-loaded="false"></div>
+    </div>
+  `;
+}
+
+// ========================================
+// Progress Dashboard Builder
+// ========================================
+
+function buildProgressDashboard(tasks) {
+  const total = tasks.length;
+  const completed = tasks.filter(t => t.status === 1 || t.status === '1' || t.status_title === 'Completed' || t.progress === 100).length;
+  const inProgress = tasks.filter(t => {
+    const isCompleted = t.status === 1 || t.status === '1' || t.status_title === 'Completed' || t.progress === 100;
+    return !isCompleted && t.progress > 0;
+  }).length;
+  const yetToStart = total - completed - inProgress;
+
+  const completedPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const inProgressPct = total > 0 ? Math.round((inProgress / total) * 100) : 0;
+  const yetToStartPct = total > 0 ? Math.round((yetToStart / total) * 100) : 0;
+
+  // Build assignee breakdown
+  const assigneeMap = {};
+  tasks.forEach(t => {
+    const name = t.assigned_to_fullname || 'Unassigned';
+    if (!assigneeMap[name]) assigneeMap[name] = { total: 0, completed: 0 };
+    assigneeMap[name].total++;
+    if (t.status === 1 || t.status === '1' || t.status_title === 'Completed' || t.progress === 100) {
+      assigneeMap[name].completed++;
+    }
+  });
+  const assignees = Object.entries(assigneeMap).sort((a, b) => b[1].total - a[1].total);
+
+  // Sort tasks: in-progress first, then yet-to-start, then completed
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const aCompleted = a.status === 1 || a.status === '1' || a.status_title === 'Completed' || a.progress === 100;
+    const bCompleted = b.status === 1 || b.status === '1' || b.status_title === 'Completed' || b.progress === 100;
+    if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+    return (b.progress || 0) - (a.progress || 0);
+  });
+
+  const donutChart = buildDonutChart(completed, inProgress, yetToStart, total);
+
+  return `
+    <div class="progress-dashboard">
+      <div class="pd-top">
+        <div class="pd-chart-section">
+          ${donutChart}
+        </div>
+        <div class="pd-stats-section">
+          <div class="pd-stat-box pd-stat-completed">
+            <div class="pd-stat-indicator"></div>
+            <div class="pd-stat-content">
+              <span class="pd-stat-count">${completed}</span>
+              <span class="pd-stat-label">Completed</span>
+            </div>
+            <span class="pd-stat-pct">${completedPct}%</span>
+          </div>
+          <div class="pd-stat-box pd-stat-inprogress">
+            <div class="pd-stat-indicator"></div>
+            <div class="pd-stat-content">
+              <span class="pd-stat-count">${inProgress}</span>
+              <span class="pd-stat-label">In Progress</span>
+            </div>
+            <span class="pd-stat-pct">${inProgressPct}%</span>
+          </div>
+          <div class="pd-stat-box pd-stat-notstarted">
+            <div class="pd-stat-indicator"></div>
+            <div class="pd-stat-content">
+              <span class="pd-stat-count">${yetToStart}</span>
+              <span class="pd-stat-label">Yet to Start</span>
+            </div>
+            <span class="pd-stat-pct">${yetToStartPct}%</span>
+          </div>
+        </div>
+      </div>
+
+      ${assignees.length > 0 ? `
+        <div class="pd-assignees">
+          <div class="pd-section-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Team Breakdown
+          </div>
+          ${assignees.map(([name, data]) => {
+            const pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+            const initials = getInitials(name);
+            const color = getAvatarColor(name);
+            return `
+              <div class="pd-assignee-row">
+                <div class="pd-assignee-info">
+                  <div class="assignee-avatar" style="background: ${color}; width: 24px; height: 24px; font-size: 0.6rem;">${initials}</div>
+                  <span class="pd-assignee-name">${escapeHtml(name)}</span>
+                </div>
+                <div class="pd-assignee-progress">
+                  <div class="pd-mini-track">
+                    <div class="pd-mini-fill" style="width: ${pct}%"></div>
+                  </div>
+                  <span class="pd-assignee-count">${data.completed}/${data.total}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      ` : ''}
+
+      <div class="pd-task-list">
+        <div class="pd-section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          All Tasks
+        </div>
+        ${sortedTasks.map(task => {
+          const isCompleted = task.status === 1 || task.status === '1' || task.status_title === 'Completed' || task.progress === 100;
+          const isInProgress = !isCompleted && (task.progress || 0) > 0;
+          const progress = task.progress || 0;
+          const statusLabel = isCompleted ? 'Completed' : (isInProgress ? 'In Progress' : 'Yet to Start');
+          const statusClass = isCompleted ? 'task-done' : (isInProgress ? 'task-wip' : 'task-todo');
+          const assignee = task.assigned_to_fullname || '';
+
+          return `
+            <div class="pd-task-row ${statusClass}">
+              <div class="pd-task-check">
+                ${isCompleted
+                  ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+                  : isInProgress
+                    ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`
+                    : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>`
+                }
+              </div>
+              <div class="pd-task-info">
+                <div class="pd-task-title">${escapeHtml(task.title || 'Untitled')}</div>
+                <div class="pd-task-subtitle">
+                  <span class="pd-task-status-label ${statusClass}">${statusLabel}</span>
+                  ${assignee ? `<span class="pd-task-assignee">• ${escapeHtml(assignee)}</span>` : ''}
+                </div>
+              </div>
+              <div class="pd-task-progress-mini">
+                <div class="pd-task-bar">
+                  <div class="pd-task-bar-fill ${statusClass}" style="width: ${progress}%"></div>
+                </div>
+                <span class="pd-task-pct">${progress}%</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function buildDonutChart(completed, inProgress, yetToStart, total) {
+  const size = 120;
+  const strokeWidth = 14;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  if (total === 0) {
+    return `
+      <div class="pd-donut-wrapper">
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+          <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="rgba(148,163,184,0.1)" stroke-width="${strokeWidth}"/>
+        </svg>
+        <div class="pd-donut-center">
+          <span class="pd-donut-value">0</span>
+          <span class="pd-donut-label">tasks</span>
+        </div>
+      </div>
+    `;
+  }
+
+  const segments = [
+    { value: completed, color: '#10b981' },   // emerald
+    { value: inProgress, color: '#f59e0b' },   // amber
+    { value: yetToStart, color: '#334155' },   // slate
+  ];
+
+  let offset = 0;
+  const circles = segments.map(seg => {
+    const pct = seg.value / total;
+    const dash = pct * circumference;
+    const gap = circumference - dash;
+    const currentOffset = offset;
+    offset += dash;
+    if (seg.value === 0) return '';
+    return `<circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none"
+              stroke="${seg.color}" stroke-width="${strokeWidth}"
+              stroke-dasharray="${dash} ${gap}"
+              stroke-dashoffset="${-currentOffset}"
+              stroke-linecap="round"
+              style="transition: stroke-dasharray 0.8s ease, stroke-dashoffset 0.8s ease;"
+              transform="rotate(-90 ${size/2} ${size/2})"/>`;
+  }).join('');
+
+  const overallPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  return `
+    <div class="pd-donut-wrapper">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="rgba(148,163,184,0.06)" stroke-width="${strokeWidth}"/>
+        ${circles}
+      </svg>
+      <div class="pd-donut-center">
+        <span class="pd-donut-value">${overallPct}%</span>
+        <span class="pd-donut-label">done</span>
+      </div>
     </div>
   `;
 }
