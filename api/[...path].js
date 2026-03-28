@@ -1,5 +1,13 @@
 // Vercel Serverless Catch-all Handler
-// This file handles all /api/* routes on Vercel by proxying to the Express app.
-// Vercel catch-all files use [...path].js naming convention.
+// Vercel catch-all files strip the /api prefix from req.url.
+// We must restore it so Express routes (/api/dashboard etc.) match correctly.
 const app = require('../server.js');
-module.exports = app;
+
+module.exports = (req, res) => {
+  // Vercel sets req.url to the path AFTER /api/, e.g. /dashboard
+  // Express routes expect /api/dashboard, so prepend /api
+  if (!req.url.startsWith('/api')) {
+    req.url = '/api' + req.url;
+  }
+  return app(req, res);
+};
