@@ -1,19 +1,12 @@
 // Vercel Serverless Catch-all Handler
-// Debug: log what Vercel passes as req.url
 const app = require('../server.js');
 
 module.exports = (req, res) => {
-  // Debug: check what URL Vercel actually passes
-  const originalUrl = req.url;
-  
-  // Vercel catch-all strips /api prefix — restore it
-  if (!req.url.startsWith('/api')) {
-    req.url = '/api' + req.url;
-  }
-  
-  // Add debug header so we can see what happened
-  res.setHeader('X-Debug-Original-Url', originalUrl);
-  res.setHeader('X-Debug-Fixed-Url', req.url);
+  // Vercel injects a "...path" query param from the catch-all — strip it
+  // The URL is already correct (/api/dashboard), just clean up the query
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  url.searchParams.delete('...path');
+  req.url = url.pathname + url.search;
   
   return app(req, res);
 };
