@@ -149,9 +149,15 @@ app.get('/api/milestones/all', async (req, res) => {
       projectList = Object.values(projects);
     }
 
-    // Filter out archived projects
+    // Whitelisted projects: always include even if archived
+    const WHITELISTED_PROJECT_IDS = ['3167931', '3557310']; // Varna, Tshirt
+
+    // Filter out archived projects (except whitelisted ones)
     // Freedcamp uses archived_ts (non-null = archived) and f_active (false = archived)
     projectList = projectList.filter(p => {
+      const pid = String(p.project_id || p.id);
+      // Always keep whitelisted projects
+      if (WHITELISTED_PROJECT_IDS.includes(pid)) return true;
       // If f_active is explicitly false, it's archived
       if (p.f_active === false || p.f_active === 'false') return false;
       // If archived_ts has a value (not null/undefined/0), it's archived

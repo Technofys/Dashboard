@@ -42,7 +42,13 @@ async function handleDashboard(res) {
   const projectsData = await freedcampFetch('projects');
   const projects = projectsData.data?.projects || projectsData.projects || [];
   let projectList = Array.isArray(projects) ? projects : Object.values(projects);
+
+  // Whitelisted projects: always include even if archived
+  const WHITELISTED_PROJECT_IDS = ['3167931', '3557310']; // Varna, Tshirt
+
   projectList = projectList.filter(p => {
+    const pid = String(p.project_id || p.id);
+    if (WHITELISTED_PROJECT_IDS.includes(pid)) return true;
     if (p.f_active === false || p.f_active === 'false') return false;
     if (p.archived_ts && p.archived_ts !== 0 && p.archived_ts !== '0') return false;
     return true;
