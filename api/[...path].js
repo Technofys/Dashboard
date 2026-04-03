@@ -72,7 +72,25 @@ async function handleDashboard(res) {
       if (activeMilestones.length > 0) {
         const projectName = project.project_name || project.name || `Project ${pid}`;
         activeProjects.push({ id: pid, name: projectName });
-        activeMilestones.forEach(ms => allMilestones.push({ ...ms, project_id: pid, project_name: projectName }));
+
+        // Fetch tasks for this project to calculate milestone progress
+        let projectTasks = [];
+        try {
+          const taskData = await freedcampFetch('tasks', { project_id: pid });
+          projectTasks = taskData.data?.tasks || taskData.tasks || [];
+          if (!Array.isArray(projectTasks) && typeof projectTasks === 'object') projectTasks = Object.values(projectTasks);
+        } catch (taskErr) {
+          console.warn(`Could not fetch tasks for ${projectName}: ${taskErr.message}`);
+        }
+
+        activeMilestones.forEach(ms => {
+          const msId = String(ms.id);
+          const msTasks = projectTasks.filter(t => String(t.ms_id || '') === msId);
+          const tasksComplete = msTasks.filter(t =>
+            t.status === 1 || t.status === '1' || t.status_title === 'Completed' || t.progress === 100
+          ).length;
+          allMilestones.push({ ...ms, project_id: pid, project_name: projectName, tasks_total: msTasks.length, tasks_complete: tasksComplete });
+        });
       }
     } catch (e) {
       if (!e.message.includes('No access to the app')) {
